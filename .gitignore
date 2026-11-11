@@ -1,0 +1,10 @@
+.env
+.venv
+.idea/
+commands.txt
+.claude/
+__pycache__/
+dummy_md/
+dummy_v2_md/
+dummy_client_data/
+dummy_v2/

@@ -1,0 +1,353 @@
+[
+  {
+    "id": "Q001",
+    "client": "EcoBuild",
+    "question": "Câte unități rezidențiale au avut panourile solare instalate în octombrie 2026?",
+    "expected_answer": "45 de unități rezidențiale",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "paragraph in section 1",
+    "trap_type": null
+  },
+  {
+    "id": "Q002",
+    "client": "EcoBuild",
+    "question": "What is EcoBuild's monthly budget for October 2026?",
+    "expected_answer": "125.000 EUR (superseded by 142.000 EUR in November)",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "paragraph in section 1",
+    "trap_type": "superseded_fact_old"
+  },
+  {
+    "id": "Q003",
+    "client": "EcoBuild",
+    "question": "What is EcoBuild's current monthly budget as of November 2026?",
+    "expected_answer": "142.000 EUR",
+    "source_file": "2026-11-meeting-notes-ecobuild.docx",
+    "location": "section 1",
+    "trap_type": "superseded_fact_new"
+  },
+  {
+    "id": "Q004",
+    "client": "EcoBuild",
+    "question": "Cine este șeful de proiect pentru EcoVillage?",
+    "expected_answer": "Adrian Dumitru",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "paragraph in section 1",
+    "trap_type": null
+  },
+  {
+    "id": "Q005",
+    "client": "EcoBuild",
+    "question": "Care este procentul de economie energetică obținut de sistemele instalate?",
+    "expected_answer": "38%",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "section 2.1",
+    "trap_type": null
+  },
+  {
+    "id": "Q006",
+    "client": "EcoBuild",
+    "question": "What percentage is Phase 2 completed?",
+    "expected_answer": "67%",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "table in section 2.2",
+    "trap_type": "table_fact"
+  },
+  {
+    "id": "Q007",
+    "client": "EcoBuild",
+    "question": "Care este reducerea amprentei de carbon comparativ cu construcțiile tradiționale?",
+    "expected_answer": "73%",
+    "source_file": "2026-09-prezentare-sustenabilitate-ecobuild.pptx",
+    "location": "slide 2",
+    "trap_type": null
+  },
+  {
+    "id": "Q008",
+    "client": "EcoBuild",
+    "question": "What is EcoBuild's policy on using discount language with clients?",
+    "expected_answer": "nu folosim niciodată termeni precum 'ieftin' sau 'reducere'",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "paragraph in section 1",
+    "trap_type": null
+  },
+  {
+    "id": "Q009",
+    "client": "Lumina",
+    "question": "When does the Winter Glow campaign launch according to the brief?",
+    "expected_answer": "December 1, 2026",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "section 1",
+    "trap_type": "collision_launch_date"
+  },
+  {
+    "id": "Q010",
+    "client": "Lumina",
+    "question": "What is the actual launch date for Winter Glow campaign per the media plan?",
+    "expected_answer": "November 15, 2026",
+    "source_file": "2026-11-media-plan-lumina.pptx",
+    "location": "slide 2",
+    "trap_type": "collision_launch_date"
+  },
+  {
+    "id": "Q011",
+    "client": "Lumina",
+    "question": "Care este bugetul campaniei Winter Glow menționat în brief?",
+    "expected_answer": "85.000 EUR",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "section 1",
+    "trap_type": "collision_budget"
+  },
+  {
+    "id": "Q012",
+    "client": "Lumina",
+    "question": "What is the total media budget for Winter Glow in the media plan?",
+    "expected_answer": "92.000 EUR",
+    "source_file": "2026-11-media-plan-lumina.pptx",
+    "location": "slide 2",
+    "trap_type": "collision_budget"
+  },
+  {
+    "id": "Q013",
+    "client": "Lumina",
+    "question": "Who is Lumina's creative director?",
+    "expected_answer": "Sarah Mitchell",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "section 2.1",
+    "trap_type": null
+  },
+  {
+    "id": "Q014",
+    "client": "Lumina",
+    "question": "Câte parteneriate cu influenceri sunt ținta pentru campanie?",
+    "expected_answer": "15 partnerships",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "table in section 2.2",
+    "trap_type": "table_fact"
+  },
+  {
+    "id": "Q015",
+    "client": "Lumina",
+    "question": "What percentage of target audience watches with sound off?",
+    "expected_answer": "78%",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "long paragraph in section 3",
+    "trap_type": null
+  },
+  {
+    "id": "Q016",
+    "client": "Lumina",
+    "question": "Cine are autoritate finală asupra comunicărilor publice la Lumina?",
+    "expected_answer": "Diana Popescu, compliance officer",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "long paragraph in section 3",
+    "trap_type": null
+  },
+  {
+    "id": "Q017",
+    "client": "Lumina",
+    "question": "What is Lumina's policy on medical claims in advertising?",
+    "expected_answer": "Never use medical claims or before/after comparisons without clinical validation",
+    "source_file": "2026-11-brief-campanie-lumina.docx",
+    "location": "section 2.1",
+    "trap_type": null
+  },
+  {
+    "id": "Q018",
+    "client": "Lumina",
+    "question": "Care a fost ROI-ul campaniei Summer Radiance?",
+    "expected_answer": "3.4x",
+    "source_file": "2026-10-raport-campanie-lumina.pdf",
+    "location": "section 1",
+    "trap_type": null
+  },
+  {
+    "id": "Q019",
+    "client": "Lumina",
+    "question": "What was the engagement rate for social media in Summer Radiance?",
+    "expected_answer": "6.8%",
+    "source_file": "2026-10-raport-campanie-lumina.pdf",
+    "location": "section 2.1",
+    "trap_type": null
+  },
+  {
+    "id": "Q020",
+    "client": "Lumina",
+    "question": "Câți micro-influenceri au fost utilizați în Summer Radiance?",
+    "expected_answer": "28 de micro-influenceri",
+    "source_file": "2026-10-raport-campanie-lumina.pdf",
+    "location": "long paragraph in section 2.2",
+    "trap_type": null
+  },
+  {
+    "id": "Q021",
+    "client": "TechNova",
+    "question": "What is TechNova's monthly operational budget?",
+    "expected_answer": "95.000 EUR",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 1",
+    "trap_type": "collision_budget"
+  },
+  {
+    "id": "Q022",
+    "client": "TechNova",
+    "question": "Când este programată lansarea versiunii 2.5?",
+    "expected_answer": "20 decembrie 2026",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 1",
+    "trap_type": "collision_deadline"
+  },
+  {
+    "id": "Q023",
+    "client": "TechNova",
+    "question": "Who is TechNova's Product Owner?",
+    "expected_answer": "Marcus Chen",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 1",
+    "trap_type": null
+  },
+  {
+    "id": "Q024",
+    "client": "TechNova",
+    "question": "What is the actual code coverage percentage achieved?",
+    "expected_answer": "87%",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "table in section 2",
+    "trap_type": "table_fact"
+  },
+  {
+    "id": "Q025",
+    "client": "TechNova",
+    "question": "Care este uptime-ul actual al platformei?",
+    "expected_answer": "99.94%",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "table in section 2",
+    "trap_type": null
+  },
+  {
+    "id": "Q026",
+    "client": "TechNova",
+    "question": "How many active enterprise users does the platform support?",
+    "expected_answer": "12.500 active enterprise users",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 3",
+    "trap_type": null
+  },
+  {
+    "id": "Q027",
+    "client": "TechNova",
+    "question": "What is TechNova's policy on promising SLAs to new clients?",
+    "expected_answer": "niciodată nu promitem SLA-uri specifice clienților noi fără aprobarea echipei de infrastructure",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 3",
+    "trap_type": null
+  },
+  {
+    "id": "Q028",
+    "client": "TechNova",
+    "question": "Câte companii client are în prezent TechNova?",
+    "expected_answer": "847 companies",
+    "source_file": "2026-11-pitch-deck-technova.pptx",
+    "location": "slide 2",
+    "trap_type": null
+  },
+  {
+    "id": "Q029",
+    "client": "TechNova",
+    "question": "What is the year-over-year growth rate?",
+    "expected_answer": "187%",
+    "source_file": "2026-11-pitch-deck-technova.pptx",
+    "location": "slide 2",
+    "trap_type": null
+  },
+  {
+    "id": "Q030",
+    "client": "TechNova",
+    "question": "How many transactions per second does the conflict resolution algorithm process?",
+    "expected_answer": "4.2 million transactions per second",
+    "source_file": "2026-11-pitch-deck-technova.pptx",
+    "location": "slide 3 speaker notes",
+    "trap_type": "speaker_notes_fact"
+  },
+  {
+    "id": "Q031",
+    "client": "TechNova",
+    "question": "Who is TechNova's Chief Technology Officer?",
+    "expected_answer": "Dr. Elena Popa",
+    "source_file": "2026-11-pitch-deck-technova.pptx",
+    "location": "slide 4",
+    "trap_type": null
+  },
+  {
+    "id": "Q032",
+    "client": "TechNova",
+    "question": "What is the peak concurrent connection capacity?",
+    "expected_answer": "8.600 concurrent connections",
+    "source_file": "2026-09-architecture-doc-technova.pdf",
+    "location": "section 1.1",
+    "trap_type": null
+  },
+  {
+    "id": "Q033",
+    "client": "ALL",
+    "question": "What is the monthly budget for each client project?",
+    "expected_answer": "EcoBuild: 142.000 EUR (Nov), Lumina: varies by campaign, TechNova: 95.000 EUR",
+    "source_file": "multiple",
+    "location": "various",
+    "trap_type": "collision_test"
+  },
+  {
+    "id": "Q034",
+    "client": "EcoBuild",
+    "question": "What is the deadline for EcoBuild's Phase 2?",
+    "expected_answer": "15 decembrie 2026",
+    "source_file": "2026-10-raport-lunar-ecobuild.docx",
+    "location": "paragraph in section 1",
+    "trap_type": "collision_deadline"
+  },
+  {
+    "id": "Q035",
+    "client": "TechNova",
+    "question": "Care este deadline-ul pentru TechNova versiunea 2.5?",
+    "expected_answer": "20 decembrie 2026",
+    "source_file": "2026-10-status-report-technova.docx",
+    "location": "section 1",
+    "trap_type": "collision_deadline"
+  },
+  {
+    "id": "Q036",
+    "client": "EcoBuild",
+    "question": "What is the profit margin for the EcoVillage project?",
+    "expected_answer": "NOT_IN_CORPUS",
+    "source_file": null,
+    "location": null,
+    "trap_type": "unanswerable"
+  },
+  {
+    "id": "Q037",
+    "client": "Lumina",
+    "question": "Care este salariul mediu al echipei de marketing Lumina?",
+    "expected_answer": "NOT_IN_CORPUS",
+    "source_file": null,
+    "location": null,
+    "trap_type": "unanswerable"
+  },
+  {
+    "id": "Q038",
+    "client": "TechNova",
+    "question": "What programming languages is CloudSync built with?",
+    "expected_answer": "NOT_IN_CORPUS",
+    "source_file": null,
+    "location": null,
+    "trap_type": "unanswerable"
+  },
+  {
+    "id": "Q039",
+    "client": "ALL",
+    "question": "Which client has the highest customer satisfaction score?",
+    "expected_answer": "NOT_IN_CORPUS",
+    "source_file": null,
+    "location": null,
+    "trap_type": "unanswerable"
+  }
+]
