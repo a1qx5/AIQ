@@ -1,0 +1,258 @@
+#!/usr/bin/env python3
+"""
+Advanced tests for incremental ingestion system.
+
+Test 5: Pipeline fingerprint change detection
+Test 6: Failure isolation with transaction rollback
+"""
+
+import sys
+import os
+from unittest.mock import patch
+from pathlib import Path
+from dotenv import load_dotenv
+import psycopg
+from pgvector.psycopg import register_vector
+
+# Import from ingest_to_db
+from ingest_to_db import compute_pipeline_fingerprint
+import chunking
+from embedders import get_embedder
+
+
+def test_pipeline_fingerprint_change():
+    """
+    Test 5: Verify that changing a chunking constant changes the fingerprint.
+
+    This test monkeypatches chunking.MAX_CHARS to show that the fingerprint
+    would detect pipeline changes and trigger re-processing.
+    """
+    print("=" * 70)
+    print("TEST 5: Pipeline Fingerprint Change Detection")
+    print("=" * 70)
+
+    # Get original fingerprint
+    original_fingerprint = compute_pipeline_fingerprint()
+    print(f"\nOriginal pipeline fingerprint: {original_fingerprint[:16]}...")
+    print(f"Original MAX_CHARS: {chunking.MAX_CHARS}")
+
+    # Monkeypatch MAX_CHARS
+    original_max_chars = chunking.MAX_CHARS
+    chunking.MAX_CHARS = 2000  # Change from 1500 to 2000
+
+    # Get new fingerprint
+    new_fingerprint = compute_pipeline_fingerprint()
+    print(f"\nAfter changing MAX_CHARS to {chunking.MAX_CHARS}:")
+    print(f"New pipeline fingerprint: {new_fingerprint[:16]}...")
+
+    # Restore original value
+    chunking.MAX_CHARS = original_max_chars
+
+    # Verify they're different
+    if original_fingerprint != new_fingerprint:
+        print("\nPASS: Fingerprints differ, pipeline change detected!")
+        print("  Files would be re-processed with the new chunking parameters.")
+        return True
+    else:
+        print("\nFAIL: Fingerprints are the same!")
+        return False
+
+
+def test_failure_isolation():
+    """
+    Test 6: Verify that when one document fails, others commit successfully
+    and the failed document retains its old chunks.
+
+    This requires:
+    1. Fresh scratch ingestion with at least 3 files
+    2. Modify content of at least 2 files
+    3. Wrap embedder to fail on the 3rd document
+    4. Verify earlier documents were committed
+    5. Verify failed document kept old chunks
+    6. Verify run continued and reported failed=1
+    """
+    print("\n" + "=" * 70)
+    print("TEST 6: Failure Isolation with Transaction Rollback")
+    print("=" * 70)
+
+    load_dotenv()
+
+    # Connect to database
+    db_password = os.getenv("POSTGRES_PASSWORD")
+    if not db_password:
+        print("Error: POSTGRES_PASSWORD not found in .env")
+        return False
+
+    conn = psycopg.connect(
+        host="127.0.0.1",
+        port=5432,
+        dbname="ai",
+        user="ai",
+        password=db_password,
+        autocommit=True
+    )
+    register_vector(conn)
+
+    # Clean up any existing scratch-failure data
+    conn.execute("DELETE FROM documents WHERE source = 'scratch-failure'")
+
+    # First, ingest all files normally
+    print("\nStep 1: Initial ingestion of scratch-failure files...")
+    from ingest_to_db import ingest_document, compute_pipeline_fingerprint
+
+    scratch_dir = Path("dummy_v2_md_scratch")
+    md_files = sorted(scratch_dir.glob("*.md"))[:5]  # Use first 5 files
+
+    embedder = get_embedder("bge-m3")
+    pipeline_fingerprint = compute_pipeline_fingerprint()
+
+    for md_path in md_files:
+        status, client, chunk_count = ingest_document(
+            conn, md_path, "bge-m3", embedder, "scratch-failure",
+            pipeline_fingerprint, dry_run=False
+        )
+        print(f"  {status}: {md_path.name} ({chunk_count} chunks)")
+
+    # Get initial chunk IDs
+    result = conn.execute(
+        """
+        SELECT d.source_path, MIN(c.id), MAX(c.id), COUNT(c.id)
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE d.source = 'scratch-failure' AND c.embedding_model = 'bge-m3'
+        GROUP BY d.source_path
+        ORDER BY d.source_path
+        """
+    )
+    initial_chunks = {row[0]: (row[1], row[2], row[3]) for row in result.fetchall()}
+
+    print("\nInitial chunk IDs:")
+    for path, (min_id, max_id, count) in initial_chunks.items():
+        print(f"  {path}: chunks {min_id}-{max_id} (count: {count})")
+
+    # Modify first 3 files
+    print("\nStep 2: Modifying first 3 files...")
+    for i, md_path in enumerate(md_files[:3]):
+        with open(md_path, 'a', encoding='utf-8') as f:
+            f.write(f"\n\nModification {i+1} for failure test.")
+        print(f"  Modified: {md_path.name}")
+
+    # Create a failing embedder wrapper
+    print("\nStep 3: Running ingestion with embedder that fails on 3rd document...")
+
+    call_count = [0]  # Use list to allow modification in nested function
+    original_embedder = get_embedder("bge-m3")
+
+    def failing_embedder(texts, is_query=False):
+        call_count[0] += 1
+        if call_count[0] == 3:
+            raise RuntimeError("Simulated embedding failure on 3rd document")
+        return original_embedder(texts, is_query)
+
+    # Re-run ingestion with failing embedder
+    stats = {'NEW': 0, 'UPDATED': 0, 'UNCHANGED': 0, 'FAILED': 0}
+
+    for md_path in md_files:
+        try:
+            status, client, chunk_count = ingest_document(
+                conn, md_path, "bge-m3", failing_embedder, "scratch-failure",
+                pipeline_fingerprint, dry_run=False
+            )
+            stats[status] += 1
+            print(f"  {status}: {md_path.name}")
+        except Exception as e:
+            stats['FAILED'] += 1
+            print(f"  FAILED: {md_path.name} - {str(e)}")
+
+    # Verify results
+    print("\nStep 4: Verifying results...")
+    result = conn.execute(
+        """
+        SELECT d.source_path, MIN(c.id), MAX(c.id), COUNT(c.id)
+        FROM chunks c
+        JOIN documents d ON c.document_id = d.id
+        WHERE d.source = 'scratch-failure' AND c.embedding_model = 'bge-m3'
+        GROUP BY d.source_path
+        ORDER BY d.source_path
+        """
+    )
+    final_chunks = {row[0]: (row[1], row[2], row[3]) for row in result.fetchall()}
+
+    print("\nFinal chunk IDs:")
+    for path, (min_id, max_id, count) in final_chunks.items():
+        print(f"  {path}: chunks {min_id}-{max_id} (count: {count})")
+
+    # Check conditions
+    success = True
+
+    # 1. First 2 files should have new chunks
+    file1 = md_files[0].name
+    file2 = md_files[1].name
+    if final_chunks[file1][0] > initial_chunks[file1][0]:
+        print(f"\n[PASS] File 1 ({file1}) has new chunks")
+    else:
+        print(f"\n[FAIL] File 1 ({file1}) should have new chunks")
+        success = False
+
+    if final_chunks[file2][0] > initial_chunks[file2][0]:
+        print(f"[PASS] File 2 ({file2}) has new chunks")
+    else:
+        print(f"[FAIL] File 2 ({file2}) should have new chunks")
+        success = False
+
+    # 2. Third file (failed) should keep old chunks
+    file3 = md_files[2].name
+    if final_chunks[file3] == initial_chunks[file3]:
+        print(f"[PASS] File 3 ({file3}) kept OLD chunks (transaction rolled back)")
+    else:
+        print(f"[FAIL] File 3 ({file3}) should have kept old chunks")
+        success = False
+
+    # 3. Stats should show failed=1
+    if stats['FAILED'] == 1:
+        print(f"[PASS] Run reported failed=1")
+    else:
+        print(f"[FAIL] Run should report failed=1, got {stats['FAILED']}")
+        success = False
+
+    # Cleanup
+    print("\nStep 5: Cleanup...")
+    conn.execute("DELETE FROM documents WHERE source = 'scratch-failure'")
+
+    # Restore modified files
+    for i, md_path in enumerate(md_files[:3]):
+        # Remove the appended line
+        content = md_path.read_text(encoding='utf-8')
+        lines = content.splitlines()
+        # Find and remove the modification lines
+        while lines and lines[-1].startswith("Modification"):
+            lines.pop()
+        while lines and not lines[-1].strip():
+            lines.pop()
+        md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+
+    conn.close()
+
+    if success:
+        print("\nPASS: All failure isolation checks passed!")
+    else:
+        print("\nFAIL: Some checks failed")
+
+    return success
+
+
+if __name__ == "__main__":
+    # Run Test 5
+    test5_passed = test_pipeline_fingerprint_change()
+
+    # Run Test 6
+    test6_passed = test_failure_isolation()
+
+    # Summary
+    print("\n" + "=" * 70)
+    print("SUMMARY")
+    print("=" * 70)
+    print(f"Test 5 (Pipeline Fingerprint): {'PASS' if test5_passed else 'FAIL'}")
+    print(f"Test 6 (Failure Isolation): {'PASS' if test6_passed else 'FAIL'}")
+
+    sys.exit(0 if (test5_passed and test6_passed) else 1)

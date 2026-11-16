@@ -1,0 +1,1 @@
+Speaker notes from pptx files cannot be transposed into the database

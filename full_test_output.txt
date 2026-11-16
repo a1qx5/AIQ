@@ -1,0 +1,330 @@
+
+================================================================================
+INCREMENTAL INGESTION EVIDENCE TESTS
+================================================================================
+================================================================================
+TEST A: Real Removal
+================================================================================
+
+1. Initial ingestion with all files:
+NEW: 2026-09-architecture-doc-technova.md (technova, 5 chunks)
+NEW: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 2 chunks)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina)
+NEW: 2026-10-brand-guidelines-lumina.md (lumina, 1 chunk)
+NEW: 2026-10-raport-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-10-raport-lunar-ecobuild.md (ecobuild, 5 chunks)
+NEW: 2026-10-status-report-technova.md (technova, 3 chunks)
+NEW: 2026-11-brief-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-11-budget-tracking-lumina.md (lumina, 2 chunks)
+NEW: 2026-11-contract-scan-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-media-plan-lumina.md (lumina, 3 chunks)
+NEW: 2026-11-meeting-notes-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-pitch-deck-technova.md (technova, 2 chunks)
+
+Summary: 12 new, 0 updated, 1 unchanged, 0 removed, 0 failed
+Chunks embedded: 35
+
+
+Counts before deletion:
+  Documents: 13
+  Chunks: 38
+  Ingestions: 13
+
+2. Deleting file: 2026-09-architecture-doc-technova.md
+
+3. Re-running ingestion after deletion:
+UNCHANGED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina)
+UNCHANGED: 2026-10-brand-guidelines-lumina.md (lumina)
+UNCHANGED: 2026-10-raport-campanie-lumina.md (lumina)
+UNCHANGED: 2026-10-raport-lunar-ecobuild.md (ecobuild)
+UNCHANGED: 2026-10-status-report-technova.md (technova)
+UNCHANGED: 2026-11-brief-campanie-lumina.md (lumina)
+UNCHANGED: 2026-11-budget-tracking-lumina.md (lumina)
+UNCHANGED: 2026-11-contract-scan-ecobuild.md (ecobuild)
+UNCHANGED: 2026-11-media-plan-lumina.md (lumina)
+UNCHANGED: 2026-11-meeting-notes-ecobuild.md (ecobuild)
+UNCHANGED: 2026-11-pitch-deck-technova.md (technova)
+REMOVED: 2026-09-architecture-doc-technova.md
+
+Summary: 0 new, 0 updated, 12 unchanged, 1 removed, 0 failed
+Chunks embedded: 0
+
+
+Counts after deletion:
+  Documents: 12
+  Chunks: 33
+  Ingestions: 12
+
+Change:
+  Documents: 13 -> 12 (delta: -1)
+  Chunks: 38 -> 33 (delta: -5)
+  Ingestions: 13 -> 12 (delta: -1)
+
+[PASS] TEST A PASSED
+
+================================================================================
+TEST B: Zero-Files Guard
+================================================================================
+
+1. Initial ingestion to populate database:
+
+Counts before empty-dir run:
+  Documents: 13
+  Chunks: 38
+  Ingestions: 13
+
+2. Running with empty directory (should abort):
+
+ERROR: Refusing to delete 13 documents (100.0% of 13 total).
+This exceeds the 30% safety threshold.
+Use --force to override this safety guard.
+
+STDERR: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/391 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 391/391 [00:00<00:00, 14860.75it/s]
+
+
+Counts after empty-dir run (should be unchanged):
+  Documents: 13
+  Chunks: 38
+  Ingestions: 13
+
+3. Running with empty directory + --force (should succeed):
+REMOVED: 2026-09-architecture-doc-technova.md
+REMOVED: 2026-09-prezentare-sustenabilitate-ecobuild.md
+REMOVED: 2026-09-strategie-seo-lumina.md
+REMOVED: 2026-10-brand-guidelines-lumina.md
+REMOVED: 2026-10-raport-campanie-lumina.md
+REMOVED: 2026-10-raport-lunar-ecobuild.md
+REMOVED: 2026-10-status-report-technova.md
+REMOVED: 2026-11-brief-campanie-lumina.md
+REMOVED: 2026-11-budget-tracking-lumina.md
+REMOVED: 2026-11-contract-scan-ecobuild.md
+REMOVED: 2026-11-media-plan-lumina.md
+REMOVED: 2026-11-meeting-notes-ecobuild.md
+REMOVED: 2026-11-pitch-deck-technova.md
+
+Summary: 0 new, 0 updated, 0 unchanged, 13 removed, 0 failed
+Chunks embedded: 0
+
+STDERR: Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/391 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 391/391 [00:00<00:00, 18001.11it/s]
+
+
+Counts after --force run:
+  Documents: 0
+  Chunks: 0
+  Ingestions: 0
+
+[PASS] TEST B PASSED
+
+================================================================================
+TEST C: Fingerprint Reaction
+================================================================================
+
+1. Initial ingestion with original chunking parameters:
+NEW: 2026-09-architecture-doc-technova.md (technova, 5 chunks)
+NEW: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 2 chunks)
+NEW: 2026-09-strategie-seo-lumina.md (lumina, 3 chunks)
+NEW: 2026-10-brand-guidelines-lumina.md (lumina, 1 chunk)
+NEW: 2026-10-raport-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-10-raport-lunar-ecobuild.md (ecobuild, 5 chunks)
+NEW: 2026-10-status-report-technova.md (technova, 3 chunks)
+NEW: 2026-11-brief-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-11-budget-tracking-lumina.md (lumina, 2 chunks)
+NEW: 2026-11-contract-scan-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-media-plan-lumina.md (lumina, 3 chunks)
+NEW: 2026-11-meeting-notes-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-pitch-deck-technova.md (technova, 2 chunks)
+
+Summary: 13 new, 0 updated, 0 unchanged, 0 removed, 0 failed
+Chunks embedded: 38
+
+
+2. Dry-run with original parameters (should show UNCHANGED):
+UNCHANGED: 2026-09-architecture-doc-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-brand-guidelines-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-lunar-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-10-status-report-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-11-brief-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-budget-tracking-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-contract-scan-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-media-plan-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-meeting-notes-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-pitch-deck-technova.md (technova, 0 chunks)
+
+Summary: 0 new, 0 updated, 13 unchanged, 0 removed, 0 failed
+Chunks embedded: 0
+
+
+UNCHANGED files with original parameters: 13
+
+3. Monkeypatching chunking.MAX_CHARS and running dry-run:
+   Original MAX_CHARS: 1500
+   Patched MAX_CHARS: 2000
+UPDATED: 2026-09-architecture-doc-technova.md (technova, 5 chunks)
+UPDATED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 2 chunks)
+UPDATED: 2026-09-strategie-seo-lumina.md (lumina, 3 chunks)
+UPDATED: 2026-10-brand-guidelines-lumina.md (lumina, 1 chunk)
+UPDATED: 2026-10-raport-campanie-lumina.md (lumina, 5 chunks)
+UPDATED: 2026-10-raport-lunar-ecobuild.md (ecobuild, 5 chunks)
+UPDATED: 2026-10-status-report-technova.md (technova, 3 chunks)
+UPDATED: 2026-11-brief-campanie-lumina.md (lumina, 5 chunks)
+UPDATED: 2026-11-budget-tracking-lumina.md (lumina, 1 chunk)
+UPDATED: 2026-11-contract-scan-ecobuild.md (ecobuild, 1 chunk)
+UPDATED: 2026-11-media-plan-lumina.md (lumina, 3 chunks)
+UPDATED: 2026-11-meeting-notes-ecobuild.md (ecobuild, 1 chunk)
+UPDATED: 2026-11-pitch-deck-technova.md (technova, 2 chunks)
+
+Summary: 0 new, 13 updated, 0 unchanged, 0 removed, 0 failed
+Chunks embedded: 0
+
+
+UPDATED files with modified parameters: 13
+
+4. Final dry-run with original parameters (should show UNCHANGED again):
+UNCHANGED: 2026-09-architecture-doc-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-brand-guidelines-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-lunar-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-10-status-report-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-11-brief-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-budget-tracking-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-contract-scan-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-media-plan-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-meeting-notes-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-pitch-deck-technova.md (technova, 0 chunks)
+
+Summary: 0 new, 0 updated, 13 unchanged, 0 removed, 0 failed
+Chunks embedded: 0
+
+
+UNCHANGED files after restoring parameters: 13
+
+[PASS] TEST C PASSED
+
+================================================================================
+TEST D: Rollback After Delete
+================================================================================
+
+1. Initial ingestion:
+
+Chunk IDs for 2026-09-architecture-doc-technova.md before forced failure:
+  [758, 759, 760, 761, 762, 779, 780, 781, 794, 795]
+
+2. Modifying 2026-09-architecture-doc-technova.md to trigger re-ingestion:
+
+3. Running with injected failure (NULL text_hash on one chunk):
+FAILED: 2026-09-architecture-doc-technova.md - null value in column "text_hash" of relation "chunks" violates not-null constraint
+DETAIL:  Failing row contains (797, 259, technova, 1, 1.1 Architecture Principles, CloudSync is built on a microservices architecture deployed acro..., [-0.057545852,-0.0092397,-0.019922998,0.0014721198,-0.031208927,..., bge-m3, null).
+UNCHANGED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina)
+UNCHANGED: 2026-10-brand-guidelines-lumina.md (lumina)
+UNCHANGED: 2026-10-raport-campanie-lumina.md (lumina)
+UNCHANGED: 2026-10-raport-lunar-ecobuild.md (ecobuild)
+UNCHANGED: 2026-10-status-report-technova.md (technova)
+UNCHANGED: 2026-11-brief-campanie-lumina.md (lumina)
+UNCHANGED: 2026-11-budget-tracking-lumina.md (lumina)
+UNCHANGED: 2026-11-contract-scan-ecobuild.md (ecobuild)
+UNCHANGED: 2026-11-media-plan-lumina.md (lumina)
+UNCHANGED: 2026-11-meeting-notes-ecobuild.md (ecobuild)
+UNCHANGED: 2026-11-pitch-deck-technova.md (technova)
+
+Summary: 0 new, 0 updated, 12 unchanged, 0 removed, 1 failed
+Chunks embedded: 0
+
+
+Chunk IDs for 2026-09-architecture-doc-technova.md after forced failure:
+  [758, 759, 760, 761, 762, 779, 780, 781, 794, 795]
+
+Raw summary line:
+  Summary: 0 new, 0 updated, 12 unchanged, 0 removed, 1 failed
+
+[PASS] TEST D PASSED
+
+================================================================================
+TEST E: Concurrency
+================================================================================
+
+1. Starting first ingestion with 3-second sleep after lock acquisition:
+
+2. Starting second ingestion (should be blocked and exit):
+
+Second process output:
+another ingestion for scratch/bge-m3 is running
+
+Second process exit code: 1
+
+3. Waiting for first ingestion to complete:
+
+First process output:
+NEW: 2026-09-architecture-doc-technova.md (technova, 5 chunks)
+NEW: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 2 chunks)
+NEW: 2026-09-strategie-seo-lumina.md (lumina, 3 chunks)
+NEW: 2026-10-brand-guidelines-lumina.md (lumina, 1 chunk)
+NEW: 2026-10-raport-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-10-raport-lunar-ecobuild.md (ecobuild, 5 chunks)
+NEW: 2026-10-status-report-technova.md (technova, 3 chunks)
+NEW: 2026-11-brief-campanie-lumina.md (lumina, 5 chunks)
+NEW: 2026-11-budget-tracking-lumina.md (lumina, 2 chunks)
+NEW: 2026-11-contract-scan-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-media-plan-lumina.md (lumina, 3 chunks)
+NEW: 2026-11-meeting-notes-ecobuild.md (ecobuild, 1 chunk)
+NEW: 2026-11-pitch-deck-technova.md (technova, 2 chunks)
+
+Summary: 13 new, 0 updated, 0 unchanged, 0 removed, 0 failed
+Chunks embedded: 38
+
+First process exit code: 0
+
+[PASS] TEST E PASSED
+
+================================================================================
+TEST F: Real Rows Dry-Run (sharepoint source)
+================================================================================
+
+Running: python ingest_to_db.py bge-m3 --dry-run
+
+UNCHANGED: 2026-09-architecture-doc-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-09-prezentare-sustenabilitate-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-09-strategie-seo-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-brand-guidelines-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-10-raport-lunar-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-10-status-report-technova.md (technova, 0 chunks)
+UNCHANGED: 2026-11-brief-campanie-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-budget-tracking-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-contract-scan-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-media-plan-lumina.md (lumina, 0 chunks)
+UNCHANGED: 2026-11-meeting-notes-ecobuild.md (ecobuild, 0 chunks)
+UNCHANGED: 2026-11-pitch-deck-technova.md (technova, 0 chunks)
+
+Summary: 0 new, 0 updated, 13 unchanged, 0 removed, 0 failed
+Chunks embedded: 0
+
+
+[PASS] TEST F PASSED
+
+================================================================================
+FINAL REPORT
+================================================================================
+
+| Test | Result | Description |
+|------|--------|-------------|
+| A    | PASS | Real removal with scratch source |
+| B    | PASS | Zero-files guard with --force override |
+| C    | PASS | Fingerprint reaction to chunking changes |
+| D    | PASS | Rollback after delete preserves chunks |
+| E    | PASS | Concurrency control with advisory lock |
+| F    | PASS | Real rows dry-run (sharepoint) |
+
+Overall: ALL TESTS PASSED [PASS]
