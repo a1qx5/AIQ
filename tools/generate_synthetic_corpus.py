@@ -27,7 +27,10 @@ from reportlab.lib import colors
 from PIL import Image, ImageDraw, ImageFont
 
 # Output folder
-OUTPUT_DIR = "dummy_v2"
+from aiq.config import CORPUS_DIR, QUESTIONS_FILE
+
+OUTPUT_DIR = str(CORPUS_DIR)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Planted facts storage - will be used to generate eval questions
 PLANTED_FACTS = {
@@ -1674,7 +1677,7 @@ def generate_eval_questions():
     ])
 
     # Save to JSON
-    eval_file = "eval_questions.json"
+    eval_file = str(QUESTIONS_FILE)
     with open(eval_file, 'w', encoding='utf-8') as f:
         json.dump(questions, f, ensure_ascii=False, indent=2)
 

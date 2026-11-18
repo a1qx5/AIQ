@@ -3,10 +3,11 @@
 Ingest markdown documents from a source directory into PostgreSQL with pgvector.
 Supports incremental ingestion with change detection and orphan removal.
 
-Usage: python ingest_to_db.py <model> [--source-dir PATH] [--source NAME]
-                                       [--dry-run] [--force]
+Usage (from the project root):
+  python -m aiq.ingest_to_db <model> [--source-dir PATH] [--source NAME]
+                                     [--dry-run] [--force]
   where <model> is "bge-m3" or "voyage"
-  --source-dir: directory containing markdown files (default: dummy_v2_md)
+  --source-dir: directory containing markdown files (default: data/dummy_v2_md)
   --source: source identifier for documents (default: sharepoint)
   --dry-run: show what would happen without making changes
   --force: bypass safety guards (e.g., 30% deletion threshold)
@@ -23,8 +24,10 @@ import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
 
-from chunking import chunk_markdown, MAX_CHARS, OVERLAP, MIN_SECTION_CHARS, MERGE_LIMIT
-from embedders import get_embedder
+from aiq.chunking import (chunk_markdown, build_embed_text, EMBED_TEMPLATE,
+                          MAX_CHARS, OVERLAP, MIN_SECTION_CHARS, MERGE_LIMIT)
+from aiq.config import MD_DIR
+from aiq.embedders import get_embedder
 
 
 def compute_lock_key(source, model):
@@ -54,10 +57,10 @@ def compute_pipeline_fingerprint():
     If any of these change, all documents should be re-processed.
     """
     # Import chunking module to read current values
-    import chunking as ch
+    from aiq import chunking as ch
 
-    # Template for embed-text (must match what's used in prepare_embed_text)
-    template = "Client: {client} | Document: {file_stem} | Section: {heading_path}\n\n{text}"
+    # Same template object that prepare_embed_text uses (defined once, in chunking.py)
+    template = ch.EMBED_TEMPLATE
 
     # Combine all pipeline parameters
     components = [
@@ -91,22 +94,19 @@ def extract_document_date(md_path):
     return None
 
 
-def compute_content_hash(text):
-    """Compute SHA256 hash of text content."""
-    return hashlib.sha256(text.encode('utf-8')).hexdigest()
-
-
 def compute_text_hash(text):
-    """Compute SHA256 hash of chunk text."""
+    """SHA256 hex digest of a text. Used for chunk text and for whole documents."""
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
+
+
+# Same function under a second name, kept on purpose: tests/test_ingestion.py (test D)
+# patches `compute_text_hash` to break one chunk and must not affect the document hash.
+compute_content_hash = compute_text_hash
 
 
 def prepare_embed_text(client, file_stem, chunk):
     """Prepare the text to be embedded for a chunk."""
-    return (
-        f"Client: {client} | Document: {file_stem} | "
-        f"Section: {chunk['heading_path']}\n\n{chunk['text']}"
-    )
+    return build_embed_text(client, file_stem, chunk['heading_path'], chunk['text'])
 
 
 def check_if_unchanged(conn, document_id, model_name, content_hash, pipeline_fingerprint):
@@ -256,9 +256,12 @@ def ingest_document(conn, md_path, model_name, embedder, source, pipeline_finger
         raise e
 
 
-def remove_orphaned_documents(conn, source, existing_files, model_name, force=False, dry_run=False):
+def remove_orphaned_documents(conn, source, existing_files, force=False, dry_run=False):
     """
     Remove documents from the database that no longer exist in the source directory.
+
+    A document belongs to a source, not to a model, so removal is for ALL models:
+    the delete cascades to its chunks and ingestions rows for every embedding model.
 
     Safety guard: refuse to delete more than 30% of documents unless --force is given.
 
@@ -320,8 +323,8 @@ def main():
     )
     parser.add_argument('model', choices=['bge-m3', 'voyage'],
                         help='Embedding model to use')
-    parser.add_argument('--source-dir', type=str, default='dummy_v2_md',
-                        help='Directory containing markdown files (default: dummy_v2_md)')
+    parser.add_argument('--source-dir', type=str, default=str(MD_DIR),
+                        help=f'Directory containing markdown files (default: {MD_DIR})')
     parser.add_argument('--source', type=str, default='sharepoint',
                         help='Source identifier for documents (default: sharepoint)')
     parser.add_argument('--dry-run', action='store_true',
@@ -338,9 +341,6 @@ def main():
 
     # Compute pipeline fingerprint
     pipeline_fingerprint = compute_pipeline_fingerprint()
-
-    # Get embedder (unless dry-run)
-    embedder = None if args.dry_run else get_embedder(args.model)
 
     # Connect to database
     db_password = os.getenv("POSTGRES_PASSWORD")
@@ -378,6 +378,10 @@ def main():
 
     # Wrap all processing in try-finally to ensure lock release
     try:
+        # Load the embedding model only after the lock is held: loading is slow, and a run
+        # that cannot get the lock should exit at once instead of loading the model first.
+        embedder = None if args.dry_run else get_embedder(args.model)
+
         # Process all markdown files
         md_dir = Path(args.source_dir)
         if not md_dir.exists():
@@ -427,7 +431,7 @@ def main():
 
         # Remove orphaned documents
         removed_paths = remove_orphaned_documents(
-            conn, args.source, md_files, args.model,
+            conn, args.source, md_files,
             force=args.force, dry_run=args.dry_run
         )
         stats['REMOVED'] = len(removed_paths)
@@ -441,6 +445,10 @@ def main():
               f"{stats['UNCHANGED']} unchanged, {stats['REMOVED']} removed, "
               f"{stats['FAILED']} failed")
         print(f"Chunks embedded: {total_chunks_embedded}")
+
+        # Non-zero exit code when any file failed, so callers and scripts can tell.
+        if stats['FAILED']:
+            sys.exit(1)
 
     finally:
         # Always release advisory lock and close connection

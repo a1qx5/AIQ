@@ -1,7 +1,5 @@
-from pathlib import Path
-from chunking import chunk_markdown
-
-MD_DIR = Path(r"C:\IQ projects\AIQ\dummy_md")
+from aiq.chunking import chunk_markdown
+from aiq.config import OLD_MD_DIR as MD_DIR
 
 for md_file in sorted(MD_DIR.glob("*.md")):
     markdown = md_file.read_text(encoding="utf-8")

@@ -15,6 +15,12 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
+from aiq.config import DATA_DIR, MD_DIR
+
+# Scratch copy of the Markdown folder used by the destructive tests.
+# Run this file from the project root: python -m tests.test_ingestion
+SCRATCH = str(DATA_DIR / 'dummy_v2_md_scratch')
+
 
 def get_db_connection():
     """Get a database connection."""
@@ -31,13 +37,13 @@ def get_db_connection():
     return conn
 
 
-def run_ingestion(model, source='sharepoint', source_dir='dummy_v2_md',
+def run_ingestion(model, source='sharepoint', source_dir=str(MD_DIR),
                   dry_run=False, force=False, inject_sleep=0):
     """Run the ingestion script and return the output."""
-    cmd = [sys.executable, 'ingest_to_db.py', model]
+    cmd = [sys.executable, '-m', 'aiq.ingest_to_db', model]
     if source != 'sharepoint':
         cmd.extend(['--source', source])
-    if source_dir != 'dummy_v2_md':
+    if source_dir != str(MD_DIR):
         cmd.extend(['--source-dir', source_dir])
     if dry_run:
         cmd.append('--dry-run')
@@ -97,17 +103,17 @@ def test_a_real_removal():
     print("=" * 80)
 
     # Setup: Create scratch directory
-    scratch_dir = Path('dummy_v2_md_scratch')
+    scratch_dir = Path(SCRATCH)
     if scratch_dir.exists():
         shutil.rmtree(scratch_dir)
-    shutil.copytree('dummy_v2_md', scratch_dir)
+    shutil.copytree(MD_DIR, scratch_dir)
 
     try:
         conn = get_db_connection()
 
         # Initial ingestion
         print("\n1. Initial ingestion with all files:")
-        returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch', source_dir='dummy_v2_md_scratch')
+        returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch', source_dir=SCRATCH)
         print(stdout)
         if returncode != 0:
             print(f"ERROR: {stderr}")
@@ -127,7 +133,7 @@ def test_a_real_removal():
 
         # Re-run ingestion
         print("\n3. Re-running ingestion after deletion:")
-        returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch', source_dir='dummy_v2_md_scratch')
+        returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch', source_dir=SCRATCH)
         print(stdout)
         if returncode != 0:
             print(f"ERROR: {stderr}")
@@ -181,13 +187,13 @@ def test_b_zero_files_guard():
         conn = get_db_connection()
 
         # Setup: Populate database with scratch source
-        scratch_dir = Path('dummy_v2_md_scratch')
+        scratch_dir = Path(SCRATCH)
         if scratch_dir.exists():
             shutil.rmtree(scratch_dir)
-        shutil.copytree('dummy_v2_md', scratch_dir)
+        shutil.copytree(MD_DIR, scratch_dir)
 
         print("\n1. Initial ingestion to populate database:")
-        run_ingestion('bge-m3', source='scratch', source_dir='dummy_v2_md_scratch')
+        run_ingestion('bge-m3', source='scratch', source_dir=SCRATCH)
 
         doc_before, chunk_before, ing_before = get_counts(conn, 'scratch')
         print(f"\nCounts before empty-dir run:")
@@ -266,22 +272,22 @@ def test_c_fingerprint_reaction():
     print("TEST C: Fingerprint Reaction")
     print("=" * 80)
 
-    scratch_dir = Path('dummy_v2_md_scratch')
+    scratch_dir = Path(SCRATCH)
     if scratch_dir.exists():
         shutil.rmtree(scratch_dir)
-    shutil.copytree('dummy_v2_md', scratch_dir)
+    shutil.copytree(MD_DIR, scratch_dir)
 
     try:
         # Initial ingestion with original values
         print("\n1. Initial ingestion with original chunking parameters:")
         returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch',
-                                                   source_dir='dummy_v2_md_scratch')
+                                                   source_dir=SCRATCH)
         print(stdout)
 
         # Dry-run with original values (should show UNCHANGED)
         print("\n2. Dry-run with original parameters (should show UNCHANGED):")
         returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch',
-                                                   source_dir='dummy_v2_md_scratch', dry_run=True)
+                                                   source_dir=SCRATCH, dry_run=True)
         print(stdout)
 
         unchanged_count = stdout.count('UNCHANGED:')
@@ -297,14 +303,15 @@ def test_c_fingerprint_reaction():
         test_script.write_text("""
 import sys
 from unittest.mock import patch
-import chunking
+from aiq.config import DATA_DIR
+from aiq import chunking
 
 # Monkeypatch MAX_CHARS
 with patch.object(chunking, 'MAX_CHARS', 2000):
     # Now run the ingestion
-    from ingest_to_db import main
+    from aiq.ingest_to_db import main
     sys.argv = ['ingest_to_db.py', 'bge-m3', '--source', 'scratch',
-                '--source-dir', 'dummy_v2_md_scratch', '--dry-run']
+                '--source-dir', str(DATA_DIR / 'dummy_v2_md_scratch'), '--dry-run']
     main()
 """)
 
@@ -322,7 +329,7 @@ with patch.object(chunking, 'MAX_CHARS', 2000):
         # Verify dry-run again with original values shows UNCHANGED
         print("\n4. Final dry-run with original parameters (should show UNCHANGED again):")
         returncode, stdout, stderr = run_ingestion('bge-m3', source='scratch',
-                                                   source_dir='dummy_v2_md_scratch', dry_run=True)
+                                                   source_dir=SCRATCH, dry_run=True)
         print(stdout)
 
         final_unchanged_count = stdout.count('UNCHANGED:')
@@ -361,17 +368,17 @@ def test_d_rollback_after_delete():
     print("TEST D: Rollback After Delete")
     print("=" * 80)
 
-    scratch_dir = Path('dummy_v2_md_scratch')
+    scratch_dir = Path(SCRATCH)
     if scratch_dir.exists():
         shutil.rmtree(scratch_dir)
-    shutil.copytree('dummy_v2_md', scratch_dir)
+    shutil.copytree(MD_DIR, scratch_dir)
 
     try:
         conn = get_db_connection()
 
         # Initial ingestion
         print("\n1. Initial ingestion:")
-        run_ingestion('bge-m3', source='scratch', source_dir='dummy_v2_md_scratch')
+        run_ingestion('bge-m3', source='scratch', source_dir=SCRATCH)
 
         # Get chunk IDs for first document before forced failure
         first_file = sorted(scratch_dir.glob("*.md"))[0]
@@ -402,6 +409,7 @@ def test_d_rollback_after_delete():
 import sys
 from unittest.mock import patch
 from pathlib import Path
+from aiq.config import DATA_DIR
 
 # Track how many times compute_text_hash is called
 call_count = {{}}
@@ -426,12 +434,12 @@ def failing_compute_text_hash(text):
     return original_compute_text_hash(text)
 
 # Import after defining function
-import ingest_to_db
+from aiq import ingest_to_db
 original_compute_text_hash = ingest_to_db.compute_text_hash
 
 with patch.object(ingest_to_db, 'compute_text_hash', failing_compute_text_hash):
     sys.argv = ['ingest_to_db.py', 'bge-m3', '--source', 'scratch',
-                '--source-dir', 'dummy_v2_md_scratch']
+                '--source-dir', str(DATA_DIR / 'dummy_v2_md_scratch')]
     ingest_to_db.main()
 """)
 
@@ -479,7 +487,7 @@ with patch.object(ingest_to_db, 'compute_text_hash', failing_compute_text_hash):
 
     finally:
         # Cleanup: Restore modified file
-        original_dir = Path('dummy_v2_md')
+        original_dir = Path(MD_DIR)
         if scratch_dir.exists():
             first_file = sorted(scratch_dir.glob("*.md"))[0]
             original_file = original_dir / first_file.name
@@ -505,33 +513,34 @@ def test_e_concurrency():
     print("TEST E: Concurrency")
     print("=" * 80)
 
-    scratch_dir = Path('dummy_v2_md_scratch')
+    scratch_dir = Path(SCRATCH)
     if scratch_dir.exists():
         shutil.rmtree(scratch_dir)
-    shutil.copytree('dummy_v2_md', scratch_dir)
+    shutil.copytree(MD_DIR, scratch_dir)
 
     try:
-        print("\n1. Starting first ingestion with 3-second sleep after lock acquisition:")
+        print("\n1. Starting first ingestion with 5-second sleep after lock acquisition:")
 
         # Start first process with sleep
         proc1 = subprocess.Popen(
-            [sys.executable, 'ingest_to_db.py', 'bge-m3',
-             '--source', 'scratch', '--source-dir', 'dummy_v2_md_scratch',
-             '--inject-sleep', '3'],
+            [sys.executable, '-m', 'aiq.ingest_to_db', 'bge-m3',
+             '--source', 'scratch', '--source-dir', SCRATCH,
+             '--inject-sleep', '5'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
         )
 
-        # Give it time to acquire lock
-        time.sleep(0.5)
+        # Give it time to start Python, connect and take the lock (the lock is taken
+        # before the model loads, so this is fast); it then holds the lock for 5 s.
+        time.sleep(2)
 
         print("\n2. Starting second ingestion (should be blocked and exit):")
 
         # Start second process
         proc2 = subprocess.Popen(
-            [sys.executable, 'ingest_to_db.py', 'bge-m3',
-             '--source', 'scratch', '--source-dir', 'dummy_v2_md_scratch'],
+            [sys.executable, '-m', 'aiq.ingest_to_db', 'bge-m3',
+             '--source', 'scratch', '--source-dir', SCRATCH],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -548,7 +557,7 @@ def test_e_concurrency():
 
         # Wait for first process
         print("\n3. Waiting for first ingestion to complete:")
-        stdout1, stderr1 = proc1.communicate(timeout=60)
+        stdout1, stderr1 = proc1.communicate(timeout=300)   # model load + embedding on CPU is slow
         print("\nFirst process output:")
         print(stdout1)
 
@@ -591,7 +600,7 @@ def test_f_real_rows_dry_run():
     print("TEST F: Real Rows Dry-Run (sharepoint source)")
     print("=" * 80)
 
-    print("\nRunning: python ingest_to_db.py bge-m3 --dry-run")
+    print("\nRunning: python -m aiq.ingest_to_db bge-m3 --dry-run")
     print()
 
     returncode, stdout, stderr = run_ingestion('bge-m3', dry_run=True)

@@ -1,4 +1,4 @@
-from chunking import split_into_sections, chunk_markdown, MAX_CHARS, OVERLAP, merge_small_sections, MERGE_LIMIT
+from aiq.chunking import split_into_sections, chunk_markdown, MAX_CHARS, OVERLAP, merge_small_sections, MERGE_LIMIT
 
 
 def test_nested_heading_paths():

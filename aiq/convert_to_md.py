@@ -1,10 +1,13 @@
-from pathlib import Path
+"""Convert every file in data/dummy_v2 to Markdown with Docling.
+Run from the project root: python -m aiq.convert_to_md  (Docling container must be up)."""
 import requests
 
+from aiq.config import CORPUS_DIR, MD_DIR
+
 DOCLING_URL = "http://localhost:5001/v1/convert/file"
-DUMMY_DIR = Path(r"C:\IQ projects\AIQ\dummy_v2")
-OUT_DIR = Path(r"C:\IQ projects\AIQ\dummy_v2_md")
-OUT_DIR.mkdir(exist_ok=True)
+DUMMY_DIR = CORPUS_DIR
+OUT_DIR = MD_DIR
+OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 for file_path in sorted(DUMMY_DIR.iterdir()):
     if not file_path.is_file():

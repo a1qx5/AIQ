@@ -1,0 +1,17 @@
+# Versions are the ones installed in .venv on 2026-11-17.
+# Pipeline
+psycopg[binary]==3.3.9
+pgvector==0.5.1
+python-dotenv==1.2.4
+numpy==2.5.4
+sentence-transformers==6.3.0
+voyageai==0.6.0
+requests==2.34.2
+
+# Corpus generator and verifier (tools/)
+python-docx==1.2.0
+python-pptx==1.0.2
+openpyxl==3.1.5
+reportlab==5.1.0
+pillow==13.0.0
+PyPDF2==3.0.1

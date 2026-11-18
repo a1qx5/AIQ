@@ -1,14 +1,12 @@
-import json
 import re
 import sys
 from pathlib import Path
 
-PROJECT = Path(r"C:\IQ projects\AIQ")
-MD_DIR = PROJECT / "dummy_v2_md"
+from aiq.config import MD_DIR
+from aiq.questions import load_questions
 
 question_id = sys.argv[1]  # e.g. Q002
-data = json.loads((PROJECT / "eval_questions.json").read_text(encoding="utf-8"))
-questions = data["questions"] if isinstance(data, dict) and "questions" in data else data
+questions = load_questions()
 question = next(item for item in questions if item["id"] == question_id)
 
 md_path = MD_DIR / (Path(question["source_file"]).stem + ".md")

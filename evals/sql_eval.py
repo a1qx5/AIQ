@@ -2,7 +2,7 @@
 """
 Evaluate retrieval performance using SQL queries against PostgreSQL + pgvector.
 
-Usage: python sql_eval.py <model>
+Usage: python -m evals.sql_eval <model>
   where <model> is "bge-m3" or "voyage"
 """
 
@@ -14,13 +14,8 @@ import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
 
-from embedders import get_embedder
-
-
-def load_questions():
-    """Load evaluation questions from eval_questions.json."""
-    with open("eval_questions.json", encoding="utf-8") as f:
-        return json.load(f)
+from aiq.embedders import get_embedder
+from aiq.questions import load_questions
 
 
 def get_client_chunks_count(conn, model_name):
@@ -116,7 +111,7 @@ def evaluate(conn, embedder, model_name, questions):
 
 def main():
     if len(sys.argv) != 2:
-        print("Usage: python sql_eval.py <model>")
+        print("Usage: python -m evals.sql_eval <model>")
         print("  where <model> is 'bge-m3' or 'voyage'")
         sys.exit(1)
 

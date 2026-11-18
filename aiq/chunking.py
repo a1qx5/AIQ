@@ -131,3 +131,13 @@ def chunk_markdown(markdown, source_path):
                 "text": text,
             })
     return chunks
+
+# The text that is actually embedded for a chunk. Used by ingestion, by the
+# eval scripts, and by the pipeline fingerprint, so there is one copy only.
+# Changing it changes the fingerprint, which makes ingestion re-embed everything.
+EMBED_TEMPLATE = "Client: {client} | Document: {file_stem} | Section: {heading_path}\n\n{text}"
+
+
+def build_embed_text(client, file_stem, heading_path, text):
+    return EMBED_TEMPLATE.format(client=client, file_stem=file_stem,
+                                 heading_path=heading_path, text=text)

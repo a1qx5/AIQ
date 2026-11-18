@@ -1,11 +1,9 @@
 import json
 import re
 from pathlib import Path
-from chunking import chunk_markdown
-
-PROJECT = Path(r"C:\IQ projects\AIQ")
-MD_DIR = PROJECT / "dummy_v2_md"
-QUESTIONS_FILE = PROJECT / "eval_questions.json"
+from aiq.chunking import chunk_markdown
+from aiq.config import MD_DIR
+from aiq.questions import load_questions
 
 
 def normalize(text):
@@ -49,8 +47,7 @@ def fact_found(expected, text):
     return None
 
 
-data = json.loads(QUESTIONS_FILE.read_text(encoding="utf-8"))
-questions = data["questions"] if isinstance(data, dict) and "questions" in data else data
+questions = load_questions()
 
 counts = {"OK": 0, "LOST_IN_CONVERSION": 0, "SPLIT_BY_CHUNKER": 0, "NO_MD_FILE": 0, "SKIPPED_NO_SINGLE_SOURCE": 0}
 

@@ -20,8 +20,9 @@ from pptx import Presentation
 from openpyxl import load_workbook
 from PyPDF2 import PdfReader
 
-CORPUS_DIR = "dummy_v2"
-EVAL_FILE = "eval_questions.json"
+from aiq.config import CORPUS_DIR, QUESTIONS_FILE
+
+EVAL_FILE = str(QUESTIONS_FILE)
 
 
 def extract_text_from_docx(filepath):

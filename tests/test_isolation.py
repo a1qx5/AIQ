@@ -11,7 +11,8 @@ import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
 
-from embedders import get_embedder
+from aiq.embedders import get_embedder
+from aiq.questions import load_questions
 
 
 def test_fk_violation():
@@ -57,10 +58,11 @@ def test_fk_violation():
             conn.execute(
                 """
                 INSERT INTO chunks
-                    (document_id, client, chunk_index, heading_path, text, embedding, embedding_model)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (document_id, client, chunk_index, heading_path, text, embedding, embedding_model, text_hash)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (doc_id, wrong_client, 9999, "Test", "Test chunk", fake_embedding, "test-model")
+                # text_hash is NOT NULL (migration 002); give it a value so only the FK can fail
+                (doc_id, wrong_client, 9999, "Test", "Test chunk", fake_embedding, "test-model", "test-hash")
             )
 
             # If we get here, the insert succeeded (which is bad)
@@ -100,8 +102,7 @@ def test_cross_client_search():
     register_vector(conn)
 
     # Load one question per client
-    with open("eval_questions.json", encoding="utf-8") as f:
-        questions = json.load(f)
+    questions = load_questions()
 
     # Find one question for each client
     client_questions = {}
@@ -115,8 +116,9 @@ def test_cross_client_search():
     for search_client in ["lumina", "ecobuild", "technova"]:
         print(f"\nSearching with client filter: {search_client}")
 
-        # Get a question from ANY client (use the first one we have)
-        question = list(client_questions.values())[0]
+        # Use a question that belongs to ANOTHER client, so the filter has to do the work:
+        # the question "wants" chunks of that other client, and none may come back.
+        question = next(q for owner, q in client_questions.items() if owner != search_client)
         print(f"Using question: {question['id']} (original client: {question['client'].lower()})")
 
         # Embed the question
@@ -136,6 +138,11 @@ def test_cross_client_search():
         ).fetchall()
 
         print(f"Results (top 5):")
+        if not results:
+            # An empty result would pass the loop below without proving anything.
+            print(f"FAIL: No results at all for client '{search_client}' (is it ingested with bge-m3?)")
+            conn.close()
+            sys.exit(1)
         for source_path, client, score in results:
             print(f"  {source_path}: client={client}, score={score:.3f}")
 

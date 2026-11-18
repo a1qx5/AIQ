@@ -1,25 +1,21 @@
-import json
 import re
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 
-from chunking import chunk_markdown
-from embedders import get_embedder
+from aiq.chunking import chunk_markdown, build_embed_text
+from aiq.config import MD_DIR
+from aiq.embedders import get_embedder
+from aiq.questions import load_questions
 
 load_dotenv()
-
-PROJECT = Path(r"C:\IQ projects\AIQ")
-MD_DIR = PROJECT / "dummy_v2_md"
-QUESTIONS_FILE = PROJECT / "eval_questions.json"
 SHOW_TOP = 4
 
 model_name = sys.argv[1]      # bge-m3 or voyage
 question_id = sys.argv[2]     # e.g. Q003
 
-data = json.loads(QUESTIONS_FILE.read_text(encoding="utf-8"))
-questions = data["questions"] if isinstance(data, dict) and "questions" in data else data
+questions = load_questions()
 question = next(q for q in questions if q["id"] == question_id)
 client = question["client"].lower()
 
@@ -33,10 +29,8 @@ for md_path in sorted(MD_DIR.glob("*.md")):
             "file": md_path.stem,
             "heading": chunk["heading_path"],
             "text": chunk["text"],
-            "embed_text": (
-                f"Client: {client} | Document: {md_path.stem} | "
-                f"Section: {chunk['heading_path']}\n\n{chunk['text']}"
-            ),
+            "embed_text": build_embed_text(client, md_path.stem,
+                                           chunk["heading_path"], chunk["text"]),
         })
 
 embed = get_embedder(model_name)
