@@ -5,6 +5,10 @@ OVERLAP = 200      # only used when one paragraph alone exceeds MAX_CHARS
 MIN_SECTION_CHARS = 300   # a section shorter than this counts as "small"
 MERGE_LIMIT = 800         # a merged group of small sections may not exceed this
 
+# Bump on ANY change to chunking behaviour (logic, not only the constants above). It is part
+# of the pipeline fingerprint, so a bump makes ingestion re-chunk and re-embed every document.
+CHUNKER_VERSION = "1"
+
 
 def split_into_sections(markdown):
     """Cut the Markdown at headings. Returns a list of
@@ -88,27 +92,44 @@ def merge_small_sections(sections):
     merged = []
     group = []   # small sections waiting to be joined
 
+    def group_text():
+        """The group's sections as one text, each section's own title kept."""
+        parts = []
+        for section in group:
+            title = section["heading_path"].split(" > ")[-1]
+            parts.append((title + "\n" + section["text"]).strip())
+        return "\n\n".join(parts)
+
     def flush_group():
         if not group:
             return
         if len(group) == 1:
             merged.append(group[0])          # a lone small section stays as it is
         else:
-            parts = []
-            for section in group:
-                title = section["heading_path"].split(" > ")[-1]
-                parts.append((title + "\n" + section["text"]).strip())
             merged.append({
                 "heading_path": group[0]["heading_path"],
-                "text": "\n\n".join(parts),
+                "text": group_text(),
             })
         group.clear()
 
     for section in sections:
         size = len(section["text"])
         if size >= MIN_SECTION_CHARS:
+            # Forward merge: a small title section right before a large one (for example
+            # "Version 2.5 | September 2026") would otherwise become a tiny chunk of its
+            # own. Prepend it to the large section if the result still fits in one chunk.
+            # The large section's heading_path wins, because it describes most of the text.
+            if group:
+                prefix = group_text() + "\n\n"
+                if len(prefix) + size <= MAX_CHARS:
+                    merged.append({
+                        "heading_path": section["heading_path"],
+                        "text": prefix + section["text"],
+                    })
+                    group.clear()
+                    continue
             flush_group()
-            merged.append(section)           # a large section is never merged
+            merged.append(section)           # otherwise a large section stands alone
             continue
         group_size = sum(len(s["text"]) for s in group)
         if group and group_size + size > MERGE_LIMIT:

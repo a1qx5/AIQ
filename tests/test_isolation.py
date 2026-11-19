@@ -11,7 +11,7 @@ import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
 
-from aiq.embedders import get_embedder
+from aiq.embedders import get_embedder, model_id
 from aiq.questions import load_questions
 
 
@@ -134,7 +134,7 @@ def test_cross_client_search():
             ORDER BY c.embedding <=> %s
             LIMIT 5
             """,
-            (query_embedding, search_client, "bge-m3", query_embedding)
+            (query_embedding, search_client, model_id("bge-m3"), query_embedding)
         ).fetchall()
 
         print(f"Results (top 5):")

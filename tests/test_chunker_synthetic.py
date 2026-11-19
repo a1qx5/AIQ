@@ -1,4 +1,8 @@
-from aiq.chunking import split_into_sections, chunk_markdown, MAX_CHARS, OVERLAP, merge_small_sections, MERGE_LIMIT
+import hashlib
+import json
+
+from aiq.chunking import (split_into_sections, chunk_markdown, MAX_CHARS, OVERLAP,
+                          merge_small_sections, MERGE_LIMIT, CHUNKER_VERSION)
 
 
 def test_nested_heading_paths():
@@ -50,10 +54,43 @@ def test_small_sections_are_merged_with_titles_kept():
 
 
 def test_large_section_is_left_alone():
+    # A large section is never merged into its neighbours' group. Since the forward-merge
+    # rule, a small section directly BEFORE it is prepended to it (see the forward-merge
+    # tests below); a small section AFTER it still stays separate.
     big = {"heading_path": "Big", "text": "x" * 500}
     small = {"heading_path": "Small", "text": "y"}
-    merged = merge_small_sections([small, big, small])
-    assert [m["text"] for m in merged] == ["y", "x" * 500, "y"]
+    merged = merge_small_sections([big, small])
+    assert [m["text"] for m in merged] == ["x" * 500, "y"]
+
+
+def test_small_title_section_is_prepended_to_following_large_section():
+    title = {"heading_path": "Doc > Version", "text": "Version 2.5 | September 2026"}
+    big = {"heading_path": "Doc > Architecture", "text": "x" * 500}
+    merged = merge_small_sections([title, big])
+    assert len(merged) == 1
+    assert merged[0]["heading_path"] == "Doc > Architecture"   # the large section's path
+    assert merged[0]["text"].startswith("Version\nVersion 2.5 | September 2026")
+    assert merged[0]["text"].endswith("x" * 500)
+
+
+def test_forward_merge_is_skipped_when_it_would_exceed_max_chars():
+    title = {"heading_path": "Doc > Version", "text": "Version 2.5"}
+    big = {"heading_path": "Doc > Architecture", "text": "x" * (MAX_CHARS - 5)}
+    merged = merge_small_sections([title, big])
+    assert [m["text"] for m in merged] == ["Version 2.5", "x" * (MAX_CHARS - 5)]
+    assert [m["heading_path"] for m in merged] == ["Doc > Version", "Doc > Architecture"]
+
+
+def test_small_group_at_end_of_document_still_works():
+    big = {"heading_path": "Big", "text": "x" * 500}
+    tail = [{"heading_path": "Tail > A", "text": "a"}, {"heading_path": "Tail > B", "text": "b"}]
+    merged = merge_small_sections([big] + tail)
+    assert len(merged) == 2
+    assert merged[0]["text"] == "x" * 500
+    assert "A\na" in merged[1]["text"] and "B\nb" in merged[1]["text"]
+    # and through the full pipeline, a one-line last section is still a chunk
+    chunks = chunk_markdown("# Big\n\n" + "x" * 500 + "\n\n# End\n\nBye.", "end.md")
+    assert chunks[-1]["text"] == "Bye."
 
 
 def test_merged_group_respects_limit():
@@ -62,6 +99,36 @@ def test_merged_group_respects_limit():
     assert len(merged) > 1
     for m in merged:
         assert len(m["text"]) <= MERGE_LIMIT + 100, len(m["text"])
+
+
+GOLDEN_SAMPLE = (
+    "# Handbook\n\n"
+    "## Version\n\nVersion 2.5 | September 2026\n\n"
+    "## Architecture\n\n" + "The service layer talks to the database. " * 12 + "\n\n"
+    "### Storage\n\nShort note.\n\n"
+    "### Limits\n\nAnother short note.\n\n"
+    "## Long text\n\n" + "word " * 700 + "\n\n"
+    "## Prices\n\n"
+    "| plan | price |\n|---|---|\n| basic | 10 |\n| pro | 25 |\n\n"
+    "## Contact\n\nwrite to us."
+)
+
+# sha256 of the chunker output for GOLDEN_SAMPLE, per CHUNKER_VERSION.
+GOLDEN = {"1": "3be13f6dd5e79ff7dfb7f97a24554302fbe1db0cdc3fc0bfa503196ff996eee6"}
+
+
+def chunker_output_hash():
+    chunks = chunk_markdown(GOLDEN_SAMPLE, "golden.md")
+    serialised = json.dumps(chunks, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(serialised.encode("utf-8")).hexdigest()
+
+
+def test_golden_chunker_output():
+    actual = chunker_output_hash()
+    assert actual == GOLDEN.get(CHUNKER_VERSION), (
+        "Chunker output changed: bump CHUNKER_VERSION and add the new hash to GOLDEN "
+        f"(version {CHUNKER_VERSION}, new hash {actual})"
+    )
 
 
 if __name__ == "__main__":

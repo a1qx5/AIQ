@@ -8,6 +8,7 @@ import numpy as np
 import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
+from aiq.embedders import model_id
 
 load_dotenv()
 db_password = os.getenv("POSTGRES_PASSWORD")
@@ -38,7 +39,7 @@ result = conn.execute(
     ORDER BY c.embedding <=> %s
     LIMIT 20
     """,
-    (query_embedding, "lumina", "bge-m3", query_embedding)
+    (query_embedding, "lumina", model_id("bge-m3"), query_embedding)
 ).fetchall()
 
 for row in result:

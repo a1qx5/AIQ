@@ -27,7 +27,7 @@ from dotenv import load_dotenv
 from aiq.chunking import (chunk_markdown, build_embed_text, EMBED_TEMPLATE,
                           MAX_CHARS, OVERLAP, MIN_SECTION_CHARS, MERGE_LIMIT)
 from aiq.config import MD_DIR
-from aiq.embedders import get_embedder
+from aiq.embedders import get_embedder, model_id
 
 
 def compute_lock_key(source, model):
@@ -46,13 +46,14 @@ def compute_lock_key(source, model):
     return int.from_bytes(hash_bytes[:8], byteorder='big', signed=True)
 
 
-def compute_pipeline_fingerprint():
+def compute_pipeline_fingerprint(embedding_model_id):
     """
     Compute a fingerprint of the chunking and embedding pipeline.
 
     This includes:
     - Chunking constants (MAX_CHARS, OVERLAP, MIN_SECTION_CHARS, MERGE_LIMIT)
     - Embed-text template structure
+    - The full embedding model id (see embedders.model_id)
 
     If any of these change, all documents should be re-processed.
     """
@@ -69,6 +70,8 @@ def compute_pipeline_fingerprint():
         f"MIN_SECTION_CHARS={ch.MIN_SECTION_CHARS}",
         f"MERGE_LIMIT={ch.MERGE_LIMIT}",
         f"TEMPLATE={template}",
+        f"CHUNKER_VERSION={ch.CHUNKER_VERSION}",
+        f"MODEL={embedding_model_id}",
     ]
 
     pipeline_string = "|".join(components)
@@ -339,8 +342,9 @@ def main():
     # Load environment variables
     load_dotenv()
 
-    # Compute pipeline fingerprint
-    pipeline_fingerprint = compute_pipeline_fingerprint()
+    # The database stores the full model id, not the short command-line name.
+    stored_model_id = model_id(args.model)
+    pipeline_fingerprint = compute_pipeline_fingerprint(stored_model_id)
 
     # Connect to database
     db_password = os.getenv("POSTGRES_PASSWORD")
@@ -378,17 +382,24 @@ def main():
 
     # Wrap all processing in try-finally to ensure lock release
     try:
-        # Load the embedding model only after the lock is held: loading is slow, and a run
-        # that cannot get the lock should exit at once instead of loading the model first.
-        embedder = None if args.dry_run else get_embedder(args.model)
-
-        # Process all markdown files
+        # Check the source directory before loading the model: a bad path should fail fast.
         md_dir = Path(args.source_dir)
         if not md_dir.exists():
             print(f"Error: Source directory '{args.source_dir}' does not exist")
             sys.exit(1)
 
         md_files = sorted(md_dir.glob("*.md"))
+
+        # An empty directory usually means a broken mount or a wrong path, not "the user
+        # deleted everything". Without --force we stop before anything can be removed.
+        if not md_files and not args.force:
+            print(f"Error: source directory is empty: nothing would remain for {args.source}")
+            print("Use --force if you really want to remove every document of this source.")
+            sys.exit(1)
+
+        # Load the embedding model only after the lock is held: loading is slow, and a run
+        # that cannot get the lock should exit at once instead of loading the model first.
+        embedder = None if args.dry_run else get_embedder(args.model)
 
         # Track statistics
         stats = {
@@ -404,7 +415,7 @@ def main():
         for md_path in md_files:
             try:
                 status, client, chunk_count = ingest_document(
-                    conn, md_path, args.model, embedder, args.source,
+                    conn, md_path, stored_model_id, embedder, args.source,
                     pipeline_fingerprint, dry_run=args.dry_run
                 )
                 stats[status] += 1

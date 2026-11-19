@@ -388,7 +388,7 @@ def test_d_rollback_after_delete():
             """
             SELECT c.id FROM chunks c
             JOIN documents d ON d.id = c.document_id
-            WHERE d.source = 'scratch' AND d.client = %s AND c.embedding_model = 'bge-m3'
+            WHERE d.source = 'scratch' AND d.client = %s AND c.embedding_model = 'BAAI/bge-m3'
             ORDER BY c.id
             """,
             (client,)
@@ -454,7 +454,7 @@ with patch.object(ingest_to_db, 'compute_text_hash', failing_compute_text_hash):
             """
             SELECT c.id FROM chunks c
             JOIN documents d ON d.id = c.document_id
-            WHERE d.source = 'scratch' AND d.client = %s AND c.embedding_model = 'bge-m3'
+            WHERE d.source = 'scratch' AND d.client = %s AND c.embedding_model = 'BAAI/bge-m3'
             ORDER BY c.id
             """,
             (client,)
@@ -616,6 +616,161 @@ def test_f_real_rows_dry_run():
     return True
 
 
+def _seed_scratch_with_one_file():
+    """Put one document (fake data) into the scratch source and ingest it."""
+    scratch_dir = Path(SCRATCH)
+    if scratch_dir.exists():
+        shutil.rmtree(scratch_dir)
+    scratch_dir.mkdir(parents=True)
+    first_file = sorted(MD_DIR.glob("*.md"))[0]
+    shutil.copy(first_file, scratch_dir / first_file.name)
+    run_ingestion('bge-m3', source='scratch', source_dir=SCRATCH)
+    return scratch_dir
+
+
+def _cleanup_scratch():
+    scratch_dir = Path(SCRATCH)
+    if scratch_dir.exists():
+        shutil.rmtree(scratch_dir)
+    conn = get_db_connection()
+    conn.execute("DELETE FROM documents WHERE source = 'scratch'")
+    conn.close()
+
+
+def test_g_missing_directory_aborts():
+    """Test G: a source directory that does not exist aborts, even with --force."""
+    print("\n" + "=" * 80)
+    print("TEST G: Missing Source Directory")
+    print("=" * 80)
+    try:
+        conn = get_db_connection()
+        _seed_scratch_with_one_file()
+        docs_before, chunks_before, _ = get_counts(conn, 'scratch')
+
+        for force in (False, True):
+            returncode, stdout, stderr = run_ingestion(
+                'bge-m3', source='scratch', source_dir='no_such_directory_xyz', force=force)
+            print(f"force={force}: exit {returncode}, output: {stdout.strip()}")
+            if returncode != 1 or 'does not exist' not in stdout:
+                print(f"[FAIL] TEST G FAILED (force={force})")
+                return False
+
+        docs_after, chunks_after, _ = get_counts(conn, 'scratch')
+        print(f"Documents {docs_before} -> {docs_after}, chunks {chunks_before} -> {chunks_after}")
+        if (docs_before, chunks_before) != (docs_after, chunks_after) or docs_before == 0:
+            print("[FAIL] TEST G FAILED: rows changed or nothing was seeded")
+            return False
+        conn.close()
+        print("\n[PASS] TEST G PASSED")
+        return True
+    finally:
+        _cleanup_scratch()
+
+
+def test_h_empty_directory_without_force_aborts():
+    """Test H: an empty directory aborts with the documented message and deletes nothing."""
+    print("\n" + "=" * 80)
+    print("TEST H: Empty Source Directory, no --force")
+    print("=" * 80)
+    empty_dir = Path('empty_test_dir_h')
+    try:
+        conn = get_db_connection()
+        _seed_scratch_with_one_file()
+        docs_before, chunks_before, ings_before = get_counts(conn, 'scratch')
+
+        if empty_dir.exists():
+            shutil.rmtree(empty_dir)
+        empty_dir.mkdir()
+        returncode, stdout, stderr = run_ingestion(
+            'bge-m3', source='scratch', source_dir=str(empty_dir))
+        print(f"exit {returncode}, output: {stdout.strip()}")
+
+        docs_after, chunks_after, ings_after = get_counts(conn, 'scratch')
+        print(f"Documents {docs_before} -> {docs_after}, chunks {chunks_before} -> {chunks_after}, "
+              f"ingestions {ings_before} -> {ings_after}")
+
+        if returncode != 1:
+            print(f"[FAIL] TEST H FAILED: expected exit 1, got {returncode}")
+            return False
+        if "source directory is empty: nothing would remain for scratch" not in stdout:
+            print("[FAIL] TEST H FAILED: message missing")
+            return False
+        if (docs_before, chunks_before, ings_before) != (docs_after, chunks_after, ings_after) \
+                or docs_before == 0:
+            print("[FAIL] TEST H FAILED: rows changed or nothing was seeded")
+            return False
+        conn.close()
+        print("\n[PASS] TEST H PASSED")
+        return True
+    finally:
+        if empty_dir.exists():
+            shutil.rmtree(empty_dir)
+        _cleanup_scratch()
+
+
+def test_i_empty_directory_with_force_removes_scratch():
+    """Test I: an empty directory with --force goes through and removes the scratch documents."""
+    print("\n" + "=" * 80)
+    print("TEST I: Empty Source Directory, with --force (scratch only)")
+    print("=" * 80)
+    empty_dir = Path('empty_test_dir_i')
+    try:
+        conn = get_db_connection()
+        _seed_scratch_with_one_file()
+        docs_before, chunks_before, _ = get_counts(conn, 'scratch')
+
+        if empty_dir.exists():
+            shutil.rmtree(empty_dir)
+        empty_dir.mkdir()
+        returncode, stdout, stderr = run_ingestion(
+            'bge-m3', source='scratch', source_dir=str(empty_dir), force=True)
+        print(f"exit {returncode}, output: {stdout.strip()}")
+
+        docs_after, chunks_after, ings_after = get_counts(conn, 'scratch')
+        print(f"Documents {docs_before} -> {docs_after}, chunks {chunks_before} -> {chunks_after}")
+
+        if returncode != 0 or docs_before == 0 or (docs_after, chunks_after, ings_after) != (0, 0, 0):
+            print("[FAIL] TEST I FAILED")
+            return False
+        conn.close()
+        print("\n[PASS] TEST I PASSED")
+        return True
+    finally:
+        if empty_dir.exists():
+            shutil.rmtree(empty_dir)
+        _cleanup_scratch()
+
+
+def test_j_fingerprint_includes_model_id():
+    """Test J: changing VOYAGE_MODEL (monkeypatched, file untouched) changes the fingerprint."""
+    print("\n" + "=" * 80)
+    print("TEST J: Fingerprint includes the embedding model id")
+    print("=" * 80)
+    from unittest.mock import patch
+    from aiq import embedders
+    from aiq.ingest_to_db import compute_pipeline_fingerprint
+
+    before = compute_pipeline_fingerprint(embedders.model_id('voyage'))
+    bge = compute_pipeline_fingerprint(embedders.model_id('bge-m3'))
+    with patch.object(embedders, 'VOYAGE_MODEL', 'voyage-other-model-for-test'):
+        patched_id = embedders.model_id('voyage')
+        patched = compute_pipeline_fingerprint(patched_id)
+    after = compute_pipeline_fingerprint(embedders.model_id('voyage'))
+
+    print(f"voyage id: {embedders.model_id('voyage')}   bge-m3 id: {embedders.model_id('bge-m3')}")
+    print(f"patched id: {patched_id}")
+    print(f"fingerprint voyage           : {before}")
+    print(f"fingerprint voyage (patched) : {patched}")
+    print(f"fingerprint bge-m3           : {bge}")
+    print(f"fingerprint voyage (restored): {after}")
+
+    if patched == before or bge == before or after != before:
+        print("[FAIL] TEST J FAILED")
+        return False
+    print("\n[PASS] TEST J PASSED")
+    return True
+
+
 def main():
     """Run all tests and generate final report."""
     print("\n" + "=" * 80)
@@ -630,6 +785,10 @@ def main():
     results['D'] = test_d_rollback_after_delete()
     results['E'] = test_e_concurrency()
     results['F'] = test_f_real_rows_dry_run()
+    results['G'] = test_g_missing_directory_aborts()
+    results['H'] = test_h_empty_directory_without_force_aborts()
+    results['I'] = test_i_empty_directory_with_force_removes_scratch()
+    results['J'] = test_j_fingerprint_includes_model_id()
 
     # Final report
     print("\n" + "=" * 80)
@@ -644,6 +803,10 @@ def main():
     print(f"| D    | {'PASS' if results['D'] else 'FAIL'} | Rollback after delete preserves chunks |")
     print(f"| E    | {'PASS' if results['E'] else 'FAIL'} | Concurrency control with advisory lock |")
     print(f"| F    | {'PASS' if results['F'] else 'FAIL'} | Real rows dry-run (sharepoint) |")
+    print(f"| G    | {'PASS' if results['G'] else 'FAIL'} | Missing source directory aborts |")
+    print(f"| H    | {'PASS' if results['H'] else 'FAIL'} | Empty directory aborts without --force |")
+    print(f"| I    | {'PASS' if results['I'] else 'FAIL'} | Empty directory with --force (scratch) |")
+    print(f"| J    | {'PASS' if results['J'] else 'FAIL'} | Fingerprint includes model id |")
 
     all_passed = all(results.values())
     print(f"\nOverall: {'ALL TESTS PASSED [PASS]' if all_passed else 'SOME TESTS FAILED [FAIL]'}")

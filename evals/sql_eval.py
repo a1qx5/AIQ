@@ -14,7 +14,7 @@ import psycopg
 from pgvector.psycopg import register_vector
 from dotenv import load_dotenv
 
-from aiq.embedders import get_embedder
+from aiq.embedders import get_embedder, model_id
 from aiq.questions import load_questions
 
 
@@ -147,12 +147,13 @@ def main():
     questions = load_questions()
 
     # Run evaluation
-    results = evaluate(conn, embedder, model_name, questions)
+    # The database stores the full model id, not the short command-line name.
+    results = evaluate(conn, embedder, model_id(model_name), questions)
 
     # Calculate metrics
     answerable = [r for r in results if r["kind"] == "answerable"]
 
-    print(f"\n=== {model_name} ===")
+    print(f"\n=== {model_name} (stored as {model_id(model_name)}) ===")
     print(f"Total questions: {len(questions)}")
     print(f"Evaluated: {len(results)} (skipped questions for clients with no chunks)")
     print(f"Answerable: {len(answerable)}")

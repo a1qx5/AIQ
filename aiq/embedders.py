@@ -10,11 +10,26 @@ def normalize(vectors):
     return vectors / np.linalg.norm(vectors, axis=1, keepdims=True)
 
 
+BGE_M3_MODEL = "BAAI/bge-m3"
+
+
+def model_id(name):
+    """The id stored in chunks.embedding_model and ingestions.embedding_model.
+    The command line keeps the short names; the database gets the full id, so that
+    changing the underlying model (e.g. VOYAGE_MODEL) counts as a new model and
+    vectors from different models are never mixed."""
+    if name == "bge-m3":
+        return BGE_M3_MODEL
+    if name == "voyage":
+        return f"voyage:{VOYAGE_MODEL}"
+    raise ValueError(f"Unknown embedder: {name}")
+
+
 def get_embedder(name):
     """Returns a function embed(texts, is_query) -> normalized numpy matrix."""
     if name == "bge-m3":
         from sentence_transformers import SentenceTransformer
-        model = SentenceTransformer("BAAI/bge-m3")
+        model = SentenceTransformer(BGE_M3_MODEL)
 
         def embed(texts, is_query):
             # bge-m3 treats queries and documents the same way
